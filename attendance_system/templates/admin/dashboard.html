@@ -1,0 +1,110 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="page-header">
+    <div>
+        <h1 class="page-title">Admin Dashboard</h1>
+        <p class="page-subtitle">Overview of your institution's attendance system</p>
+    </div>
+</div>
+
+<!-- Statistics Cards -->
+<div class="stats-grid">
+    <div class="stat-card glass-panel">
+        <div class="stat-content">
+            <div class="stat-info">
+                <span class="stat-label">Total Teachers</span>
+                <h2 class="stat-value">{{ stats.teachers }}</h2>
+            </div>
+            <div class="stat-icon stat-icon-primary">
+                <i class="fas fa-chalkboard-teacher"></i>
+            </div>
+        </div>
+    </div>
+
+    <div class="stat-card glass-panel">
+        <div class="stat-content">
+            <div class="stat-info">
+                <span class="stat-label">Total Students</span>
+                <h2 class="stat-value">{{ stats.students }}</h2>
+            </div>
+            <div class="stat-icon stat-icon-secondary">
+                <i class="fas fa-user-graduate"></i>
+            </div>
+        </div>
+    </div>
+
+    <div class="stat-card glass-panel">
+        <div class="stat-content">
+            <div class="stat-info">
+                <span class="stat-label">Attendance Records</span>
+                <h2 class="stat-value">{{ stats.attendance }}</h2>
+            </div>
+            <div class="stat-icon stat-icon-success">
+                <i class="fas fa-clipboard-check"></i>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Pending Approvals Section -->
+<div class="section-header">
+    <h3 class="section-title">
+        <i class="fas fa-user-clock"></i>
+        Pending Approvals
+    </h3>
+    <span class="badge badge-warning">{{ pending_users|length }} pending</span>
+</div>
+
+<div class="glass-panel table-container">
+    {% if pending_users %}
+    <table class="data-table">
+        <thead>
+            <tr>
+                <th>User Details</th>
+                <th>Role</th>
+                <th class="text-right">Actions</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for user in pending_users %}
+            <tr>
+                <td>
+                    <div class="user-info">
+                        <div class="user-avatar">
+                            <i class="fas fa-user"></i>
+                        </div>
+                        <div>
+                            <div class="user-name">{{ user.username }}</div>
+                            <small class="user-id">ID: {{ user.id }}</small>
+                        </div>
+                    </div>
+                </td>
+                <td>
+                    <span class="badge badge-{{ 'primary' if user.role == 'teacher' else 'secondary' }}">
+                        {{ user.role|capitalize }}
+                    </span>
+                </td>
+                <td class="text-right">
+                    <div class="action-buttons">
+                        <a href="{{ url_for('admin.approve_user', user_id=user.id) }}" class="btn btn-success btn-sm">
+                            <i class="fas fa-check"></i> Approve
+                        </a>
+                        <a href="{{ url_for('admin.reject_user', user_id=user.id) }}" class="btn btn-danger btn-sm">
+                            <i class="fas fa-times"></i> Reject
+                        </a>
+                    </div>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    {% else %}
+    <div class="empty-state">
+        <i class="fas fa-check-circle"></i>
+        <h4>All Caught Up!</h4>
+        <p>No pending registration requests at the moment.</p>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}

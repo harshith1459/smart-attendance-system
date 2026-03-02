@@ -1,0 +1,13 @@
+flask==3.1.2
+werkzeug==3.1.4
+mongoengine
+pymongo
+flask-login
+flask-wtf
+email_validator
+opencv-contrib-python>=4.11.0
+numpy>=2.3.4
+pillow
+wtforms
+python-dotenv
+

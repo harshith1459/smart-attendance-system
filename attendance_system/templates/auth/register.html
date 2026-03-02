@@ -1,0 +1,115 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="auth-container">
+    <div class="auth-card auth-card-wide glass-panel animate-slide-down">
+        <div class="auth-header">
+            <div class="auth-icon">
+                <i class="fas fa-user-plus"></i>
+            </div>
+            <h2>Create Account</h2>
+            <p>Fill in your details to get started</p>
+        </div>
+
+        <form method="POST" class="auth-form">
+            {{ form.hidden_tag() }}
+
+            <div class="form-group">
+                <label class="form-label" for="full_name">
+                    <i class="fas fa-id-card"></i> Full Name
+                </label>
+                {{ form.full_name(class="form-input", placeholder="Enter your full name", id="full_name") }}
+                {% for error in form.full_name.errors %}
+                <span class="form-error"><i class="fas fa-exclamation-circle"></i> {{ error }}</span>
+                {% endfor %}
+            </div>
+
+            <div id="usernameContainer" class="form-group">
+                <label class="form-label" for="username">
+                    <i class="fas fa-user"></i> Username
+                </label>
+                {{ form.username(class="form-input", placeholder="Choose a username", id="username") }}
+                {% for error in form.username.errors %}
+                <span class="form-error"><i class="fas fa-exclamation-circle"></i> {{ error }}</span>
+                {% endfor %}
+            </div>
+
+            <div class="form-row">
+                <div class="form-group">
+                    <label class="form-label" for="password">
+                        <i class="fas fa-lock"></i> Password
+                    </label>
+                    {{ form.password(class="form-input", placeholder="Create password", id="password") }}
+                </div>
+                <div class="form-group">
+                    <label class="form-label" for="confirm_password">
+                        <i class="fas fa-lock"></i> Confirm Password
+                    </label>
+                    {{ form.confirm_password(class="form-input", placeholder="Confirm password", id="confirm_password") }}
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label class="form-label" for="roleSelect">
+                    <i class="fas fa-user-tag"></i> Register As
+                </label>
+                {{ form.role(class="form-input", id="roleSelect") }}
+            </div>
+
+            <div id="studentFields" class="form-group">
+                <label class="form-label" for="roll_no">
+                    <i class="fas fa-hashtag"></i> Roll Number
+                </label>
+                {{ form.roll_no(class="form-input", id="roll_no", placeholder="e.g., 21BCE0042") }}
+                <span class="form-hint">Your roll number will be used as your username</span>
+            </div>
+
+            <div id="teacherFields" class="form-group" style="display: none;">
+                <label class="form-label" for="department">
+                    <i class="fas fa-building"></i> Department
+                </label>
+                {{ form.department(class="form-input", placeholder="e.g., Computer Science", id="department") }}
+            </div>
+
+            <button type="submit" class="btn btn-primary btn-block">
+                <i class="fas fa-user-plus"></i> Create Account
+            </button>
+        </form>
+
+        <div class="auth-footer">
+            <p>Already have an account? <a href="{{ url_for('auth.login') }}">Sign in</a></p>
+        </div>
+    </div>
+</div>
+
+<script>
+    const roleSelect = document.getElementById('roleSelect');
+    const studentFields = document.getElementById('studentFields');
+    const teacherFields = document.getElementById('teacherFields');
+    const usernameContainer = document.getElementById('usernameContainer');
+    const usernameInput = document.getElementById('username');
+    const rollInput = document.getElementById('roll_no');
+
+    function toggleFields() {
+        if (roleSelect.value === 'student') {
+            studentFields.style.display = 'block';
+            teacherFields.style.display = 'none';
+            usernameContainer.style.display = 'none';
+            if (rollInput && usernameInput) usernameInput.value = rollInput.value;
+        } else {
+            studentFields.style.display = 'none';
+            teacherFields.style.display = 'block';
+            usernameContainer.style.display = 'block';
+            if (usernameInput) usernameInput.value = '';
+        }
+    }
+
+    roleSelect.addEventListener('change', toggleFields);
+    if (rollInput && usernameInput) {
+        rollInput.addEventListener('input', function () {
+            if (roleSelect.value === 'student') usernameInput.value = this.value;
+        });
+    }
+    toggleFields();
+</script>
+{% endblock %}

@@ -1,0 +1,87 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="page-header">
+    <div>
+        <h1 class="page-title">Teacher Dashboard</h1>
+        <p class="page-subtitle">Welcome back! Manage your classes and attendance.</p>
+    </div>
+    <div class="system-status online">
+        <i class="fas fa-circle"></i>
+        <span>System Online</span>
+    </div>
+</div>
+
+<div class="dashboard-two-col">
+    <!-- Quick Actions -->
+    <section>
+        <h3 class="section-title mb-4">
+            <i class="fas fa-bolt"></i> Quick Actions
+        </h3>
+        <div class="action-cards">
+            <a href="{{ url_for('teacher.mark_attendance') }}" class="action-card glass-panel">
+                <div class="action-card-content">
+                    <div class="action-icon action-icon-primary">
+                        <i class="fas fa-camera"></i>
+                    </div>
+                    <div class="action-info">
+                        <h4>Take Attendance</h4>
+                        <p>Use face recognition to mark attendance</p>
+                    </div>
+                </div>
+                <i class="fas fa-chevron-right action-arrow"></i>
+            </a>
+
+            <a href="#" class="action-card glass-panel disabled">
+                <div class="action-card-content">
+                    <div class="action-icon">
+                        <i class="fas fa-file-export"></i>
+                    </div>
+                    <div class="action-info">
+                        <h4>Export Reports</h4>
+                        <p>Download attendance reports</p>
+                    </div>
+                </div>
+                <i class="fas fa-lock action-arrow"></i>
+            </a>
+        </div>
+    </section>
+
+    <!-- Today's Classes -->
+    <section>
+        <h3 class="section-title mb-4">
+            <i class="fas fa-calendar-day"></i> Today's Schedule
+        </h3>
+        <div class="glass-panel schedule-card">
+            {% if class_stats %}
+            <div class="schedule-list">
+                {% for stat in class_stats %}
+                <div class="schedule-item">
+                    <div class="schedule-info">
+                        <span class="period-label">Period {{ stat.period }}</span>
+                        <h4 class="subject-name">{{ stat.subject }}</h4>
+                        <span class="schedule-time">{{ stat.time }}</span>
+                    </div>
+                    <div class="schedule-count">
+                        <span class="count-value">{{ stat.present_count }}</span>
+                        <span class="count-label">Present</span>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+            {% else %}
+            <div class="empty-state">
+                <i class="fas fa-calendar-xmark"></i>
+                <h4>No Classes Today</h4>
+                <p>You don't have any scheduled classes for today.</p>
+            </div>
+            {% endif %}
+
+            <div class="schedule-footer">
+                <span class="footer-label">Today's Total</span>
+                <span class="footer-value">{{ total_records }} Records</span>
+            </div>
+        </div>
+    </section>
+</div>
+{% endblock %}

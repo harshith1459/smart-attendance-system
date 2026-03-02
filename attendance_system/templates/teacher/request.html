@@ -1,0 +1,146 @@
+{% extends "base.html" %}
+
+{% block content %}
+<!-- Tom Select CSS -->
+<link href="https://cdn.jsdelivr.net/npm/tom-select@2.2.2/dist/css/tom-select.css" rel="stylesheet">
+<style>
+    /* Tom Select Glassmorphism Styling */
+    .ts-control {
+        background: rgba(255, 255, 255, 0.05) !important;
+        border: 1px solid var(--glass-border) !important;
+        border-radius: 12px !important;
+        color: var(--text-main) !important;
+        padding: 12px 15px !important;
+        transition: all 0.3s ease;
+    }
+
+    .ts-control input {
+        color: var(--text-main) !important;
+    }
+
+    .ts-dropdown {
+        background: rgba(20, 20, 35, 0.95) !important;
+        backdrop-filter: blur(20px);
+        border: 1px solid var(--glass-border) !important;
+        border-radius: 12px !important;
+        color: var(--text-main) !important;
+        box-shadow: 0 10px 40px rgba(0, 0, 0, 0.5) !important;
+        margin-top: 5px !important;
+    }
+
+    .ts-dropdown .option {
+        padding: 10px 15px !important;
+        transition: background 0.2s ease;
+    }
+
+    .ts-dropdown .active {
+        background: var(--primary-gradient) !important;
+        color: white !important;
+    }
+
+    .ts-wrapper.focus .ts-control {
+        border-color: var(--primary) !important;
+        box-shadow: 0 0 0 3px rgba(124, 77, 255, 0.2) !important;
+    }
+
+    .form-group label {
+        display: block;
+        margin-bottom: 8px;
+        font-weight: 500;
+        color: var(--text-muted);
+    }
+</style>
+
+<div class="row" style="display: flex; justify-content: center; padding: 20px;">
+    <div class="col-md-8 glass-panel" style="padding: 40px; max-width: 600px; width: 100%;">
+        <h2 class="text-gradient" style="margin-bottom: 25px;">Special Permission Request</h2>
+        <form method="POST">
+            {{ form.hidden_tag() }}
+
+            <div class="form-group" style="margin-bottom: 20px;">
+                {{ form.student_enrollment.label }}
+                {{ form.student_enrollment(id="student-select", placeholder="Search for a student...") }}
+            </div>
+
+            <div class="form-group" style="margin-bottom: 20px;">
+                {{ form.date.label }}
+                {{ form.date(class="form-input", type="date", id="request-date") }}
+            </div>
+
+            <div class="form-group" style="margin-bottom: 20px;">
+                {{ form.period_no.label }}
+                {{ form.period_no(class="form-input", id="period-select", disabled=True) }}
+                <small id="period-status"
+                    style="display: block; margin-top: 5px; font-size: 0.75rem; color: var(--text-muted);"></small>
+            </div>
+
+            <div class="form-group" style="margin-bottom: 25px;">
+                {{ form.reason.label }}
+                {{ form.reason(class="form-input", rows="3", placeholder="Enter reason for manual request...") }}
+            </div>
+
+            <div class="form-group">
+                {{ form.submit(class="btn-premium", style="width: 100%;") }}
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Tom Select JS -->
+<script src="https://cdn.jsdelivr.net/npm/tom-select@2.2.2/dist/js/tom-select.complete.min.js"></script>
+<script>
+    new TomSelect("#student-select", {
+        create: false,
+        sortField: {
+            field: "text",
+            direction: "asc"
+        },
+        placeholder: "Search student by name or enrollment ID...",
+        allowEmptyOption: false
+    });
+
+    const dateInput = document.getElementById('request-date');
+    const periodSelect = document.getElementById('period-select');
+    const periodStatus = document.getElementById('period-status');
+
+    // Set max date to today
+    const today = new Date().toISOString().split('T')[0];
+    dateInput.max = today;
+
+    dateInput.addEventListener('change', async function () {
+        const selectedDate = this.value;
+        if (!selectedDate) {
+            periodSelect.disabled = true;
+            periodSelect.innerHTML = '<option value="">Select a date first</option>';
+            return;
+        }
+
+        periodSelect.disabled = true;
+        periodStatus.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Checking your schedule...';
+        periodSelect.innerHTML = '<option value="">Loading periods...</option>';
+
+        try {
+            const response = await fetch(`/teacher/get_periods?date=${selectedDate}`);
+            const periods = await response.json();
+
+            if (periods.length > 0) {
+                periodSelect.innerHTML = '<option value="">-- Select Period --</option>';
+                periods.forEach(p => {
+                    const option = document.createElement('option');
+                    option.value = p.period_no;
+                    option.textContent = p.display;
+                    periodSelect.appendChild(option);
+                });
+                periodSelect.disabled = false;
+                periodStatus.innerHTML = '<span style="color: #4ade80;"><i class="fas fa-check-circle"></i> Scheduled slots found</span>';
+            } else {
+                periodSelect.innerHTML = '<option value="">No classes found for this day</option>';
+                periodStatus.innerHTML = '<span style="color: #ff5252;"><i class="fas fa-exclamation-triangle"></i> You have no scheduled classes on this day.</span>';
+            }
+        } catch (error) {
+            console.error('Error fetching periods:', error);
+            periodStatus.innerHTML = 'Error loading schedule.';
+        }
+    });
+</script>
+{% endblock %}

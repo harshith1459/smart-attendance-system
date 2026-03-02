@@ -1,0 +1,15 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div style="text-align: center; padding: 4rem 2rem;">
+    <div class="glass-panel" style="max-width: 500px; margin: 0 auto; padding: 3rem;">
+        <i class="fas fa-server" style="font-size: 3rem; color: var(--danger-500); margin-bottom: 1rem;"></i>
+        <h1 style="margin-bottom: 0.5rem;">500</h1>
+        <h3 style="color: var(--text-secondary); margin-bottom: 1.5rem;">Internal Server Error</h3>
+        <p style="color: var(--text-muted); margin-bottom: 2rem;">Something went wrong on our end. Please try again later.</p>
+        <a href="{{ url_for('auth.login') }}" class="btn btn-primary">
+            <i class="fas fa-home"></i> Back to Home
+        </a>
+    </div>
+</div>
+{% endblock %}

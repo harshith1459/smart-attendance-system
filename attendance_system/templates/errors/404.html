@@ -1,0 +1,16 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div style="text-align: center; padding: 6rem 0; animation: fadeIn 0.8s ease;">
+    <div
+        style="font-size: 8rem; font-weight: 900; line-height: 1; color: var(--primary); opacity: 0.1; position: absolute; left: 50%; transform: translateX(-50%); z-index: -1;">
+        404
+    </div>
+    <h1 style="font-size: 3.5rem; letter-spacing: -2px; margin-bottom: 1rem;">Protocol Missing</h1>
+    <p style="color: var(--text-muted); max-width: 500px; margin: 0 auto 2.5rem;">The identity node you are looking for
+        does not exist in the current grid. Please verify the URL or return to safety.</p>
+    <a href="/" class="btn btn-primary">
+        <i class="fas fa-house"></i> Grid Home
+    </a>
+</div>
+{% endblock %}

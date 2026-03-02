@@ -1,0 +1,38 @@
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+*.egg-info/
+dist/
+build/
+
+# Virtual Environment
+.venv/
+venv/
+env/
+
+# Environment / Secrets
+.env
+
+# Logs
+*.log
+logs/
+
+# Uploads & ML cache
+static/uploads/dataset/
+uploads/
+*.pkl
+
+# ONNX models (large binary files)
+*.onnx
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# OS
+Thumbs.db
+.DS_Store

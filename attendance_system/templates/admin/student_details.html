@@ -1,0 +1,66 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="page-header">
+    <div>
+        <a href="{{ url_for('admin.students_list') }}" class="back-link">
+            <i class="fas fa-arrow-left"></i> Back to Students
+        </a>
+        <h1 class="page-title">Attendance History</h1>
+        <p class="page-subtitle">
+            <strong>{{ student.name }}</strong> &bull; Roll No: {{ student.roll_no }}
+        </p>
+    </div>
+</div>
+
+<div class="glass-panel table-container">
+    {% if history %}
+    <table class="data-table">
+        <thead>
+            <tr>
+                <th>Date & Time</th>
+                <th>Subject</th>
+                <th>Method</th>
+                <th class="text-right">Status</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for record in history %}
+            <tr>
+                <td>
+                    <div class="date-time">
+                        <span class="date">{{ record.date }}</span>
+                        <small class="time">{{ record.time.strftime('%H:%M:%S') }}</small>
+                    </div>
+                </td>
+                <td>
+                    {% if record.course %}
+                    <div>
+                        <div class="subject-name">{{ record.course.subject_name }}</div>
+                        <small class="subject-code">{{ record.course.subject_code }}</small>
+                    </div>
+                    {% else %}
+                    <span class="text-muted">General</span>
+                    {% endif %}
+                </td>
+                <td>
+                    <span class="method-badge">{{ record.method }}</span>
+                </td>
+                <td class="text-right">
+                    <span class="status-badge status-success">
+                        <i class="fas fa-check"></i> Present
+                    </span>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    {% else %}
+    <div class="empty-state">
+        <i class="fas fa-calendar-times"></i>
+        <h4>No Attendance Records</h4>
+        <p>This student has no attendance records yet.</p>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}

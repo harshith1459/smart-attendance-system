@@ -1,0 +1,189 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="page-header">
+    <div>
+        <h1 class="page-title">My Dashboard</h1>
+        <p class="page-subtitle">Welcome, <strong>{{ student.name }}</strong> &bull; Roll No: {{ student.roll_no }}</p>
+    </div>
+</div>
+
+<div class="dashboard-grid">
+    <!-- Left Sidebar -->
+    <aside class="dashboard-sidebar">
+        <!-- Attendance Score Card -->
+        <div class="glass-panel score-card">
+            <h4 class="card-title">Attendance Score</h4>
+            <div class="score-display">
+                <div class="score-value {{ 'text-success' if stats.percentage >= 75 else 'text-warning' if stats.percentage >= 60 else 'text-danger' }}">
+                    {{ stats.percentage }}<span class="score-percent">%</span>
+                </div>
+                <div class="progress-bar">
+                    <div class="progress-fill {{ 'bg-success' if stats.percentage >= 75 else 'bg-warning' if stats.percentage >= 60 else 'bg-danger' }}" 
+                         style="width: {{ stats.percentage }}%"></div>
+                </div>
+                <p class="score-status">
+                    {% if stats.percentage >= 75 %}
+                    <i class="fas fa-check-circle text-success"></i> Meeting 75% requirement
+                    {% else %}
+                    <i class="fas fa-exclamation-triangle text-warning"></i> Below 75% requirement
+                    {% endif %}
+                </p>
+            </div>
+        </div>
+
+        <!-- Face Enrollment Card -->
+        <div class="glass-panel enrollment-card">
+            <h4 class="card-title">
+                <i class="fas fa-camera"></i> Face Recognition
+            </h4>
+            
+            <div class="enrollment-status">
+                {% if student.is_face_enrolled %}
+                <div class="status-indicator status-success">
+                    <i class="fas fa-check-circle"></i>
+                    <span>Face Enrolled</span>
+                </div>
+                {% else %}
+                <div class="status-indicator status-warning">
+                    <i class="fas fa-exclamation-triangle"></i>
+                    <span>Not Enrolled</span>
+                </div>
+                {% endif %}
+            </div>
+
+            <div id="enrollUI">
+                <button type="button" onclick="startEnrollment()" class="btn btn-primary btn-block">
+                    <i class="fas fa-camera"></i> 
+                    {{ 'Re-enroll Face' if student.is_face_enrolled else 'Enroll Face' }}
+                </button>
+            </div>
+
+            <div id="cameraSection" style="display: none;">
+                <div class="camera-preview">
+                    <video id="enrollVideo" autoplay playsinline></video>
+                    <canvas id="enrollCanvas" style="display: none;"></canvas>
+                    <div id="progressText" class="camera-status">
+                        Starting camera...
+                    </div>
+                </div>
+                <button id="captureEnrollBtn" class="btn btn-primary btn-block mt-3">
+                    <i class="fas fa-camera"></i> Capture Photo <span id="photoCount">1</span>/5
+                </button>
+            </div>
+        </div>
+    </aside>
+
+    <!-- Main Content -->
+    <section class="dashboard-main">
+        <div class="glass-panel">
+            <div class="card-header">
+                <h3 class="card-title">
+                    <i class="fas fa-history"></i> Recent Attendance
+                </h3>
+            </div>
+            
+            <div class="attendance-list">
+                {% if history %}
+                <table class="data-table">
+                    <tbody>
+                        {% for record in history %}
+                        <tr>
+                            <td>
+                                <div class="subject-info">
+                                    <span class="subject-name">{{ record.course.subject_name if record.course else 'General' }}</span>
+                                    <small class="subject-date">{{ record.date }} at {{ record.time.strftime('%H:%M') }}</small>
+                                </div>
+                            </td>
+                            <td>
+                                <span class="method-badge">{{ record.method }}</span>
+                            </td>
+                            <td class="text-right">
+                                <span class="status-badge status-success">
+                                    <i class="fas fa-check"></i> Present
+                                </span>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+                {% else %}
+                <div class="empty-state">
+                    <i class="fas fa-calendar-check"></i>
+                    <h4>No Records Yet</h4>
+                    <p>Your attendance records will appear here.</p>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </section>
+</div>
+
+<script>
+    let stream = null;
+    let photoIndex = 0;
+    const enrollVideo = document.getElementById('enrollVideo');
+    const enrollCanvas = document.getElementById('enrollCanvas');
+    const cameraSection = document.getElementById('cameraSection');
+    const enrollmentUI = document.getElementById('enrollUI');
+    const progressText = document.getElementById('progressText');
+    const photoCountSpan = document.getElementById('photoCount');
+    const captureBtn = document.getElementById('captureEnrollBtn');
+
+    async function startEnrollment() {
+        try {
+            stream = await navigator.mediaDevices.getUserMedia({ 
+                video: { facingMode: 'user', width: 640, height: 480 } 
+            });
+            enrollVideo.srcObject = stream;
+            cameraSection.style.display = 'block';
+            enrollmentUI.style.display = 'none';
+            photoIndex = 0;
+            updateUI();
+        } catch (err) {
+            alert('Camera access denied: ' + err.message);
+        }
+    }
+
+    function updateUI() {
+        photoCountSpan.innerText = photoIndex + 1;
+        progressText.innerText = `Photo ${photoIndex + 1} of 5`;
+    }
+
+    captureBtn.addEventListener('click', async () => {
+        const context = enrollCanvas.getContext('2d');
+        enrollCanvas.width = enrollVideo.videoWidth;
+        enrollCanvas.height = enrollVideo.videoHeight;
+        context.drawImage(enrollVideo, 0, 0, enrollCanvas.width, enrollCanvas.height);
+
+        const dataURL = enrollCanvas.toDataURL('image/jpeg', 0.6);
+        progressText.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Saving...';
+        captureBtn.disabled = true;
+
+        try {
+            const response = await fetch("{{ url_for('student.enroll_face_live') }}", {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ image: dataURL, index: photoIndex })
+            });
+            const data = await response.json();
+
+            if (data.status === 'success') {
+                photoIndex++;
+                if (photoIndex >= 5) {
+                    progressText.innerHTML = '<i class="fas fa-check-circle text-success"></i> Enrollment complete!';
+                    setTimeout(() => window.location.reload(), 1500);
+                } else {
+                    updateUI();
+                }
+            } else {
+                progressText.innerHTML = '<i class="fas fa-times-circle text-danger"></i> ' + data.message;
+            }
+        } catch (err) {
+            progressText.innerText = 'Error occurred. Please try again.';
+        } finally {
+            captureBtn.disabled = false;
+        }
+    });
+</script>
+{% endblock %}

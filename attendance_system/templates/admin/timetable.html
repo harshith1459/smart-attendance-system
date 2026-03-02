@@ -1,0 +1,50 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="page-header">
+    <div>
+        <h1 class="page-title">Timetable</h1>
+        <p class="page-subtitle">Weekly class schedule for all teachers</p>
+    </div>
+    <a href="{{ url_for('admin.dashboard') }}" class="btn btn-ghost">
+        <i class="fas fa-arrow-left"></i> Back to Dashboard
+    </a>
+</div>
+
+<div class="glass-panel timetable-container">
+    <div class="timetable-grid">
+        <!-- Header Row -->
+        <div class="timetable-header-cell"></div>
+        {% for day in ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'] %}
+        <div class="timetable-header-cell">{{ day[:3] }}</div>
+        {% endfor %}
+
+        <!-- Period Rows -->
+        {% for p_num, times in timings.items() %}
+        <div class="timetable-period-cell">
+            <span class="period-number">P{{ p_num }}</span>
+            <small class="period-time">{{ times[0] }} - {{ times[1] }}</small>
+        </div>
+
+        {% for day in ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'] %}
+        {% set entry = grid_data.get(day, {}).get(p_num) %}
+        <div class="timetable-cell {{ 'has-class' if entry else 'empty' }}">
+            {% if entry %}
+            <div class="class-subject">{{ entry.subject_name }}</div>
+            <div class="class-teacher">{{ entry.teacher.name }}</div>
+            {% else %}
+            <span class="no-class">-</span>
+            {% endif %}
+        </div>
+        {% endfor %}
+        {% endfor %}
+    </div>
+</div>
+
+<div class="info-card glass-panel">
+    <i class="fas fa-info-circle"></i>
+    <div>
+        <strong>Note:</strong> Teachers will automatically see their assigned classes in their dashboard.
+    </div>
+</div>
+{% endblock %}

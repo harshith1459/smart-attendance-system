@@ -1,0 +1,124 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="page-header">
+    <div>
+        <h1 class="page-title">Manual Attendance</h1>
+        <p class="page-subtitle">Mark attendance manually for your scheduled classes</p>
+    </div>
+</div>
+
+<form method="POST" id="bulk-form">
+    <!-- Date & Period Selection -->
+    <div class="glass-panel form-card">
+        <div class="form-row">
+            <div class="form-group">
+                <label class="form-label" for="bulk-date">
+                    <i class="fas fa-calendar"></i> Select Date
+                </label>
+                <input type="date" name="date" id="bulk-date" class="form-input" required>
+            </div>
+            <div class="form-group">
+                <label class="form-label" for="bulk-period">
+                    <i class="fas fa-clock"></i> Select Period
+                </label>
+                <select name="period_no" id="bulk-period" class="form-input" disabled required>
+                    <option value="">Select a date first</option>
+                </select>
+                <small id="bulk-period-status" class="form-hint"></small>
+            </div>
+        </div>
+    </div>
+
+    <!-- Student Selection -->
+    <div class="glass-panel student-selection-card">
+        <div class="select-all-row">
+            <label class="checkbox-label">
+                <input type="checkbox" id="select-all" class="checkbox-input">
+                <span class="checkbox-custom"></span>
+                <span>Select All Students</span>
+            </label>
+            <span id="selected-count" class="selected-count">0 selected</span>
+        </div>
+
+        <div class="student-list">
+            {% for student in students %}
+            <div class="student-item">
+                <div class="student-info">
+                    <span class="student-roll">{{ student.roll_no }}</span>
+                    <span class="student-name">{{ student.name }}</span>
+                </div>
+                <label class="checkbox-label">
+                    <input type="checkbox" name="student_ids" value="{{ student.id }}" class="checkbox-input student-checkbox">
+                    <span class="checkbox-custom"></span>
+                </label>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+
+    <!-- Submit Button -->
+    <div class="form-actions sticky-bottom">
+        <button type="submit" class="btn btn-primary btn-lg btn-block">
+            <i class="fas fa-paper-plane"></i> Submit Attendance
+        </button>
+    </div>
+</form>
+
+<script>
+    const dateInput = document.getElementById('bulk-date');
+    const periodSelect = document.getElementById('bulk-period');
+    const periodStatus = document.getElementById('bulk-period-status');
+    const selectAll = document.getElementById('select-all');
+    const checkboxes = document.querySelectorAll('.student-checkbox');
+    const countDisplay = document.getElementById('selected-count');
+
+    // Restrict to today and past dates
+    const today = new Date().toISOString().split('T')[0];
+    dateInput.max = today;
+
+    // Fetch periods when date changes
+    dateInput.addEventListener('change', async function () {
+        const selectedDate = this.value;
+        if (!selectedDate) return;
+
+        periodSelect.disabled = true;
+        periodStatus.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Loading...';
+
+        try {
+            const response = await fetch(`/teacher/get_periods?date=${selectedDate}`);
+            const periods = await response.json();
+
+            if (periods.length > 0) {
+                periodSelect.innerHTML = '<option value="">Choose a period</option>';
+                periods.forEach(p => {
+                    const option = document.createElement('option');
+                    option.value = p.period_no;
+                    option.textContent = p.display;
+                    periodSelect.appendChild(option);
+                });
+                periodSelect.disabled = false;
+                periodStatus.innerHTML = '<span class="text-success"><i class="fas fa-check"></i> Schedule found</span>';
+            } else {
+                periodSelect.innerHTML = '<option value="">No classes found</option>';
+                periodStatus.innerHTML = '<span class="text-danger"><i class="fas fa-times"></i> No classes scheduled for this day</span>';
+            }
+        } catch (error) {
+            periodStatus.innerHTML = '<span class="text-danger">Error loading schedule</span>';
+        }
+    });
+
+    // Select all functionality
+    selectAll.addEventListener('change', function () {
+        checkboxes.forEach(cb => cb.checked = this.checked);
+        updateCount();
+    });
+
+    checkboxes.forEach(cb => cb.addEventListener('change', updateCount));
+
+    function updateCount() {
+        const checkedCount = document.querySelectorAll('.student-checkbox:checked').length;
+        countDisplay.innerText = checkedCount + ' selected';
+    }
+</script>
+{% endblock %}

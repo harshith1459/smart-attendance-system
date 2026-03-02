@@ -1,0 +1,144 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="page-header">
+    <div>
+        <h1 class="page-title">Take Attendance</h1>
+        <p class="page-subtitle">Use face recognition to mark student attendance</p>
+    </div>
+</div>
+
+<div class="attendance-layout">
+    <!-- Camera Section -->
+    <div class="glass-panel camera-section">
+        <div class="camera-viewport">
+            <video id="video" autoplay playsinline></video>
+            <canvas id="canvas" style="display: none;"></canvas>
+            
+            <!-- Corner Markers -->
+            <div class="camera-overlay">
+                <div class="corner-marker top-left"></div>
+                <div class="corner-marker top-right"></div>
+                <div class="corner-marker bottom-left"></div>
+                <div class="corner-marker bottom-right"></div>
+            </div>
+
+            <div id="scannerStatus" class="camera-badge">
+                <i class="fas fa-circle text-success"></i>
+                Camera Ready
+            </div>
+        </div>
+
+        <div class="camera-controls">
+            <button id="captureBtn" class="btn btn-primary btn-lg">
+                <i class="fas fa-camera"></i> Scan Students
+            </button>
+            <button id="resetBtn" class="btn btn-ghost">
+                <i class="fas fa-rotate-left"></i> Reset
+            </button>
+        </div>
+    </div>
+
+    <!-- Results Section -->
+    <div class="results-section">
+        <!-- Stats Card -->
+        <div class="glass-panel stats-card">
+            <h4 class="card-title">Session Stats</h4>
+            <div class="stats-row">
+                <div class="stat-item">
+                    <span class="stat-label">Detected</span>
+                    <span id="statDetected" class="stat-number">0</span>
+                </div>
+                <div class="stat-item stat-item-success">
+                    <span class="stat-label">Recognized</span>
+                    <span id="statAuth" class="stat-number">0</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Recognition Results -->
+        <div class="glass-panel results-card">
+            <h4 class="card-title">Recognition Results</h4>
+            <div id="statusMessage" class="status-message">
+                <i class="fas fa-info-circle"></i>
+                Click "Scan Students" to begin
+            </div>
+            <div class="recognized-list">
+                <ul id="attendanceList"></ul>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    const video = document.getElementById('video');
+    const canvas = document.getElementById('canvas');
+    const captureBtn = document.getElementById('captureBtn');
+    const resetBtn = document.getElementById('resetBtn');
+    const statusDiv = document.getElementById('statusMessage');
+    const list = document.getElementById('attendanceList');
+
+    const fetchEndpoint = "{{ url_for('teacher.mark_attendance') }}";
+
+    navigator.mediaDevices.getUserMedia({ 
+        video: { facingMode: "environment", width: 1280, height: 720 } 
+    })
+    .then(stream => { video.srcObject = stream; })
+    .catch(err => {
+        statusDiv.innerHTML = '<i class="fas fa-exclamation-triangle text-danger"></i> Camera access denied';
+    });
+
+    let authCount = 0;
+
+    resetBtn.addEventListener('click', () => {
+        list.innerHTML = '';
+        authCount = 0;
+        document.getElementById('statAuth').innerText = '0';
+        document.getElementById('statDetected').innerText = '0';
+        statusDiv.innerHTML = '<i class="fas fa-info-circle"></i> Click "Scan Students" to begin';
+    });
+
+    captureBtn.addEventListener('click', () => {
+        const context = canvas.getContext('2d');
+        canvas.width = video.videoWidth;
+        canvas.height = video.videoHeight;
+        context.drawImage(video, 0, 0);
+
+        const dataURL = canvas.toDataURL('image/jpeg', 0.8);
+        statusDiv.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Processing...';
+        captureBtn.disabled = true;
+
+        const formData = new FormData();
+        formData.append('image', dataURL);
+
+        fetch(fetchEndpoint, { method: 'POST', body: formData })
+            .then(res => res.json())
+            .then(data => {
+                captureBtn.disabled = false;
+                if (data.status === 'success') {
+                    statusDiv.innerHTML = `<i class="fas fa-check-circle text-success"></i> ${data.subject} - ${data.names.length} student(s) recognized`;
+                    document.getElementById('statDetected').innerText = parseInt(document.getElementById('statDetected').innerText) + data.total_detected;
+
+                    data.names.forEach(roll => {
+                        const existing = Array.from(list.querySelectorAll('strong')).some(el => el.innerText === roll);
+                        if (!existing) {
+                            authCount++;
+                            document.getElementById('statAuth').innerText = authCount;
+
+                            const li = document.createElement('li');
+                            li.className = "recognized-item animate-slide-down";
+                            li.innerHTML = `<i class="fas fa-user-check text-success"></i> <strong>${roll}</strong>`;
+                            list.prepend(li);
+                        }
+                    });
+                } else {
+                    statusDiv.innerHTML = `<i class="fas fa-times-circle text-danger"></i> ${data.message}`;
+                }
+            })
+            .catch(err => {
+                captureBtn.disabled = false;
+                statusDiv.innerHTML = '<i class="fas fa-wifi text-danger"></i> Connection error. Please try again.';
+            });
+    });
+</script>
+{% endblock %}
