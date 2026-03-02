@@ -58,9 +58,30 @@ class StudentService:
         if os.path.exists(pkl_path):
             os.remove(pkl_path)
 
-        # Completion check (5 frames)
+        # Completion check (5 frames) — run augmentation + rebuild cache
         if len(student_profile.face_enrollment_data) >= 5:
             student_profile.is_face_enrolled = True
+
+            # Run data augmentation pipeline
+            try:
+                from ml.trainer import FaceTrainer
+                trainer = FaceTrainer()
+                stats = trainer.retrain_student(dataset_dir)
+                print(f'[Enrollment] Student {student_profile.id}: '
+                      f'{stats["originals"]} originals + {stats["augmented"]} augmented = '
+                      f'{stats["total"]} total training images')
+            except Exception as e:
+                print(f'[Enrollment] Augmentation failed (non-critical): {e}')
+
+            # Force-rebuild the face recognition database with new images
+            try:
+                from ml.recognize import FaceRecognizer
+                db_path = os.path.join(os.getcwd(), 'static', 'uploads', 'dataset')
+                recognizer = FaceRecognizer(db_path)
+                recognizer.rebuild_cache()
+                print(f'[Enrollment] Face database rebuilt for student {student_profile.id}')
+            except Exception as e:
+                print(f'[Enrollment] Cache rebuild failed (non-critical): {e}')
 
         student_profile.save()
         return True

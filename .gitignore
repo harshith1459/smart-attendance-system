@@ -24,6 +24,11 @@ static/uploads/dataset/
 uploads/
 *.pkl
 
+# Test data (LFW, composites, generated)
+**/test_data/lfw_home/
+**/test_data/group_test_db/
+**/test_data/group_composites/
+
 # ONNX models (large binary files)
 *.onnx
 
