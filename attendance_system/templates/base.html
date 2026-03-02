@@ -28,17 +28,17 @@
                 {% if current_user.is_authenticated %}
                 {% if current_user.role == 'admin' %}
                 <a href="{{ url_for('admin.dashboard') }}"
-                    class="nav-item {{ 'active' if 'admin' in request.endpoint }}">Dashboard</a>
+                    class="nav-item {{ 'active' if request.endpoint and 'admin' in request.endpoint }}">Dashboard</a>
                 <a href="{{ url_for('admin.students_list') }}"
-                    class="nav-item {{ 'active' if 'students_list' in request.endpoint }}">Students</a>
+                    class="nav-item {{ 'active' if request.endpoint and 'students_list' in request.endpoint }}">Students</a>
                 {% elif current_user.role == 'teacher' %}
                 <a href="{{ url_for('teacher.dashboard') }}"
-                    class="nav-item {{ 'active' if 'teacher.dashboard' == request.endpoint }}">Dashboard</a>
+                    class="nav-item {{ 'active' if request.endpoint and 'teacher.dashboard' == request.endpoint }}">Dashboard</a>
                 <a href="{{ url_for('teacher.mark_attendance') }}"
-                    class="nav-item {{ 'active' if 'mark_attendance' in request.endpoint }}">Take Attendance</a>
+                    class="nav-item {{ 'active' if request.endpoint and 'mark_attendance' in request.endpoint }}">Take Attendance</a>
                 {% elif current_user.role == 'student' %}
                 <a href="{{ url_for('student.dashboard') }}"
-                    class="nav-item {{ 'active' if 'student.dashboard' == request.endpoint }}">My Dashboard</a>
+                    class="nav-item {{ 'active' if request.endpoint and 'student.dashboard' == request.endpoint }}">My Dashboard</a>
                 {% endif %}
 
                 <div class="nav-user-section">
@@ -49,7 +49,7 @@
                 </div>
                 {% else %}
                 <a href="{{ url_for('auth.login') }}"
-                    class="nav-item {{ 'active' if 'login' in request.endpoint }}">Login</a>
+                    class="nav-item {{ 'active' if request.endpoint and 'login' in request.endpoint }}">Login</a>
                 <a href="{{ url_for('auth.register') }}" class="btn btn-primary">Register</a>
                 {% endif %}
             </div>

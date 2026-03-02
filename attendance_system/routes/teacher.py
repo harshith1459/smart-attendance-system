@@ -4,7 +4,16 @@ from services.attendance_service import AttendanceService
 from models import Student, Timetable, Attendance, AttendanceRequest
 from forms import AttendanceRequestForm
 from datetime import datetime, date
-import random
+import base64
+import os
+
+try:
+    import cv2
+    import numpy as np
+    from ml.recognize import FaceRecognizer
+    ML_AVAILABLE = True
+except ImportError:
+    ML_AVAILABLE = False
 
 teacher_bp = Blueprint('teacher', __name__)
 
@@ -30,29 +39,76 @@ def mark_attendance():
         image_data = request.form.get('image')
         if not image_data:
             return jsonify({'status': 'error', 'message': 'No identity packet received.'})
-            
+
+        if not ML_AVAILABLE:
+            return jsonify({'status': 'error', 'message': 'ML libraries (cv2/numpy) not installed.'})
+
+        # Decode the base64 image from the camera
+        try:
+            header, encoded = image_data.split(',', 1)
+            img_bytes = base64.b64decode(encoded)
+            nparr = np.frombuffer(img_bytes, np.uint8)
+            img = cv2.imdecode(nparr, cv2.IMREAD_COLOR)
+        except Exception as e:
+            return jsonify({'status': 'error', 'message': f'Image decode failed: {str(e)}'})
+
+        if img is None:
+            return jsonify({'status': 'error', 'message': 'Invalid image data.'})
+
+        # Use real face recognition
+        db_path = os.path.join(os.getcwd(), 'static', 'uploads', 'dataset')
+        recognizer = FaceRecognizer(db_path)
+        results = recognizer.recognize_face(img)
+
         teacher_profile = current_user.teacher_profile
         current_course = AttendanceService.get_current_slot(teacher_profile)
-        
-        # Simulated Face Detection for Prototyping
-        all_students = Student.objects(is_face_enrolled=True)
-        detected_rolls = []
-        
-        if all_students:
-            # Simulate 1-3 detections
-            picked = random.sample(list(all_students), min(len(all_students), random.randint(1, 3)))
-            for s in picked:
-                if AttendanceService.record_attendance(s, teacher_profile, current_course):
-                    detected_rolls.append(s.roll_no)
-        
+
+        recognized_rolls = []
+        total_detected = len(results)
+
+        for (student_id, score, box) in results:
+            if student_id == 'unknown':
+                continue
+            student = Student.objects(id=student_id).first()
+            if student and student.roll_no not in recognized_rolls:
+                recognized_rolls.append(student.roll_no)
+
         return jsonify({
             'status': 'success',
-            'total_detected': len(detected_rolls),
-            'names': detected_rolls,
-            'subject': current_course.subject_name if current_course else "General Session"
+            'total_detected': total_detected,
+            'names': recognized_rolls,
+            'subject': current_course.subject_name if current_course else 'General Session'
         })
 
-    return render_template('teacher/attendance.html', ml_available=True)
+    return render_template('teacher/attendance.html', ml_available=ML_AVAILABLE)
+
+
+@teacher_bp.route('/save_attendance', methods=['POST'])
+def save_attendance():
+    """Save attendance for the recognized students (called after scan)"""
+    data = request.get_json()
+    if not data:
+        return jsonify({'status': 'error', 'message': 'No data received.'})
+
+    roll_numbers = data.get('roll_numbers', [])
+    if not roll_numbers:
+        return jsonify({'status': 'error', 'message': 'No students to mark.'})
+
+    teacher_profile = current_user.teacher_profile
+    current_course = AttendanceService.get_current_slot(teacher_profile)
+
+    saved_count = 0
+    for roll in roll_numbers:
+        student = Student.objects(roll_no=roll).first()
+        if student:
+            if AttendanceService.record_attendance(student, teacher_profile, current_course):
+                saved_count += 1
+
+    return jsonify({
+        'status': 'success',
+        'message': f'Attendance marked for {saved_count} student(s).',
+        'saved_count': saved_count
+    })
 
 @teacher_bp.route('/get_periods')
 def get_periods():
