@@ -1438,6 +1438,35 @@ a:hover {
     flex: 2;
 }
 
+/* Scan guide banner */
+.scan-guide {
+    margin-top: 1rem;
+    padding: 0.75rem 1rem;
+    background: rgba(0, 200, 83, 0.1);
+    border: 1px solid rgba(0, 200, 83, 0.3);
+    border-radius: var(--radius-lg, 12px);
+    animation: fadeSlideIn 0.4s ease;
+}
+
+.scan-guide-inner {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    font-size: 0.85rem;
+    color: var(--text-primary, #e0e0e0);
+}
+
+.scan-guide-inner i {
+    font-size: 1.1rem;
+    color: #00c853;
+    flex-shrink: 0;
+}
+
+@keyframes fadeSlideIn {
+    from { opacity: 0; transform: translateY(-8px); }
+    to   { opacity: 1; transform: translateY(0); }
+}
+
 .camera-controls .btn:last-child {
     flex: 1;
 }

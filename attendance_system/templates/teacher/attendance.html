@@ -4,7 +4,7 @@
 <div class="page-header">
     <div>
         <h1 class="page-title">Take Attendance</h1>
-        <p class="page-subtitle">Use face recognition to mark student attendance</p>
+        <p class="page-subtitle">Scan the classroom — sweep left to right for best results</p>
     </div>
 </div>
 
@@ -37,6 +37,14 @@
                 <i class="fas fa-rotate-left"></i> Reset
             </button>
         </div>
+
+        <!-- Scan guide -->
+        <div id="scanGuide" class="scan-guide" style="display:none;">
+            <div class="scan-guide-inner">
+                <i class="fas fa-arrows-left-right"></i>
+                <span id="scanGuideText">Point camera at the next section of the class and tap "Scan Again"</span>
+            </div>
+        </div>
     </div>
 
     <!-- Results Section -->
@@ -46,12 +54,26 @@
             <h4 class="card-title">Session Stats</h4>
             <div class="stats-row">
                 <div class="stat-item">
+                    <span class="stat-label">Scans</span>
+                    <span id="statScans" class="stat-number">0</span>
+                </div>
+                <div class="stat-item">
                     <span class="stat-label">Detected</span>
                     <span id="statDetected" class="stat-number">0</span>
                 </div>
                 <div class="stat-item stat-item-success">
                     <span class="stat-label">Recognized</span>
                     <span id="statAuth" class="stat-number">0</span>
+                </div>
+            </div>
+            <!-- Progress bar -->
+            <div id="progressSection" style="display:none; margin-top: 0.75rem;">
+                <div style="display:flex; justify-content:space-between; font-size:0.8rem; color:var(--text-secondary, #888); margin-bottom:0.25rem;">
+                    <span id="progressLabel">0 students</span>
+                    <span id="progressNewLabel"></span>
+                </div>
+                <div style="background:rgba(255,255,255,0.1); border-radius:6px; height:8px; overflow:hidden;">
+                    <div id="progressBar" style="height:100%; background:linear-gradient(90deg,#00c853,#69f0ae); border-radius:6px; transition:width 0.5s ease; width:0%;"></div>
                 </div>
             </div>
         </div>
@@ -61,7 +83,7 @@
             <h4 class="card-title">Recognition Results</h4>
             <div id="statusMessage" class="status-message">
                 <i class="fas fa-info-circle"></i>
-                Click "Scan Students" to begin
+                Click "Scan Students" to begin — scan multiple times to cover the full class
             </div>
             <div class="recognized-list">
                 <ul id="attendanceList"></ul>
@@ -92,27 +114,55 @@
     const scanEndpoint = "{{ url_for('teacher.mark_attendance') }}";
     const saveEndpoint = "{{ url_for('teacher.save_attendance') }}";
 
+    // Request highest available resolution for large classrooms
     navigator.mediaDevices.getUserMedia({ 
-        video: { facingMode: "environment", width: 1280, height: 720 } 
+        video: { 
+            facingMode: "environment",
+            width: { ideal: 3840 },    // Try 4K first
+            height: { ideal: 2160 },
+            advanced: [
+                { width: 3840, height: 2160 },  // 4K
+                { width: 2560, height: 1440 },  // 1440p
+                { width: 1920, height: 1080 },  // 1080p
+                { width: 1280, height: 720 }     // 720p fallback
+            ]
+        } 
     })
-    .then(stream => { video.srcObject = stream; })
+    .then(stream => { 
+        video.srcObject = stream;
+        // Log actual resolution
+        const track = stream.getVideoTracks()[0];
+        const settings = track.getSettings();
+        console.log(`Camera: ${settings.width}x${settings.height}`);
+        document.getElementById('scannerStatus').innerHTML = 
+            `<i class="fas fa-circle text-success"></i> Camera ${settings.width}×${settings.height}`;
+    })
     .catch(err => {
         statusDiv.innerHTML = '<i class="fas fa-exclamation-triangle text-danger"></i> Camera access denied';
     });
 
     let authCount = 0;
-    let recognizedRolls = [];  // Track all recognized roll numbers
+    let scanCount = 0;
+    let totalDetected = 0;
+    let recognizedRolls = [];  // Track all recognized roll numbers across ALL scans
 
     resetBtn.addEventListener('click', () => {
         list.innerHTML = '';
         authCount = 0;
+        scanCount = 0;
+        totalDetected = 0;
         recognizedRolls = [];
         document.getElementById('statAuth').innerText = '0';
         document.getElementById('statDetected').innerText = '0';
-        statusDiv.innerHTML = '<i class="fas fa-info-circle"></i> Click "Scan Students" to begin';
+        document.getElementById('statScans').innerText = '0';
+        statusDiv.innerHTML = '<i class="fas fa-info-circle"></i> Click "Scan Students" to begin — scan multiple times to cover the full class';
+        captureBtn.innerHTML = '<i class="fas fa-camera"></i> Scan Students';
         markSection.style.display = 'none';
         savedMessage.style.display = 'none';
         savedMessage.innerHTML = '';
+        document.getElementById('scanGuide').style.display = 'none';
+        document.getElementById('progressSection').style.display = 'none';
+        document.getElementById('progressBar').style.width = '0%';
     });
 
     captureBtn.addEventListener('click', () => {
@@ -121,7 +171,8 @@
         canvas.height = video.videoHeight;
         context.drawImage(video, 0, 0);
 
-        const dataURL = canvas.toDataURL('image/jpeg', 0.8);
+        // Use high quality JPEG for better face detection
+        const dataURL = canvas.toDataURL('image/jpeg', 0.92);
         statusDiv.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Scanning faces...';
         captureBtn.disabled = true;
 
@@ -133,32 +184,69 @@
             .then(data => {
                 captureBtn.disabled = false;
                 if (data.status === 'success') {
-                    document.getElementById('statDetected').innerText = parseInt(document.getElementById('statDetected').innerText) + data.total_detected;
+                    scanCount++;
+                    totalDetected += data.total_detected;
+                    document.getElementById('statScans').innerText = scanCount;
+                    document.getElementById('statDetected').innerText = totalDetected;
 
-                    if (data.names.length === 0 && data.total_detected > 0) {
-                        statusDiv.innerHTML = `<i class="fas fa-exclamation-triangle text-warning"></i> ${data.total_detected} face(s) detected but none recognized. Try again.`;
-                    } else if (data.names.length === 0) {
-                        statusDiv.innerHTML = '<i class="fas fa-exclamation-triangle text-warning"></i> No faces detected. Ensure students are visible.';
-                    } else {
-                        statusDiv.innerHTML = `<i class="fas fa-check-circle text-success"></i> ${data.subject} — ${data.names.length} student(s) recognized`;
-                    }
+                    let newThisScan = 0;
 
                     data.names.forEach(roll => {
                         if (!recognizedRolls.includes(roll)) {
                             recognizedRolls.push(roll);
                             authCount++;
-                            document.getElementById('statAuth').innerText = authCount;
+                            newThisScan++;
 
                             const li = document.createElement('li');
                             li.className = "recognized-item animate-slide-down";
-                            li.innerHTML = `<i class="fas fa-user-check text-success"></i> <strong>${roll}</strong>`;
+                            li.innerHTML = `<i class="fas fa-user-check text-success"></i> <strong>${roll}</strong> <span style="font-size:0.75rem; color:var(--text-secondary,#888);">scan #${scanCount}</span>`;
                             list.prepend(li);
                         }
                     });
 
+                    document.getElementById('statAuth').innerText = authCount;
+
+                    // Update progress
+                    document.getElementById('progressSection').style.display = 'block';
+                    document.getElementById('progressLabel').innerText = `${authCount} student(s) recognized`;
+                    if (newThisScan > 0) {
+                        document.getElementById('progressNewLabel').innerText = `+${newThisScan} new this scan`;
+                        document.getElementById('progressNewLabel').style.color = '#00c853';
+                    } else {
+                        document.getElementById('progressNewLabel').innerText = 'No new faces — try a different angle';
+                        document.getElementById('progressNewLabel').style.color = '#ff9800';
+                    }
+
+                    // Status message
+                    if (newThisScan > 0) {
+                        statusDiv.innerHTML = `<i class="fas fa-check-circle text-success"></i> Scan #${scanCount}: +${newThisScan} new (${authCount} total) — ${data.subject}`;
+                    } else if (data.total_detected > 0) {
+                        statusDiv.innerHTML = `<i class="fas fa-info-circle text-warning"></i> Scan #${scanCount}: ${data.total_detected} faces but no new students. Try a different section.`;
+                    } else {
+                        statusDiv.innerHTML = '<i class="fas fa-exclamation-triangle text-warning"></i> No faces detected. Point camera at students.';
+                    }
+
+                    // Update button for next scan
+                    captureBtn.innerHTML = `<i class="fas fa-camera"></i> Scan Again`;
+
+                    // Show guide to encourage more scans
+                    const guide = document.getElementById('scanGuide');
+                    guide.style.display = 'block';
+                    if (scanCount === 1) {
+                        document.getElementById('scanGuideText').innerText = 
+                            `✅ ${newThisScan} found! Now point camera at the next section and scan again.`;
+                    } else if (newThisScan > 0) {
+                        document.getElementById('scanGuideText').innerText = 
+                            `✅ +${newThisScan} more! Keep scanning to catch remaining students.`;
+                    } else {
+                        document.getElementById('scanGuideText').innerText = 
+                            `All visible students captured. Scan a different area or tap "Mark Attendance".`;
+                    }
+
                     // Show Mark Attendance button if there are recognized students
                     if (recognizedRolls.length > 0) {
                         markSection.style.display = 'block';
+                        markAttendanceBtn.innerHTML = `<i class="fas fa-check-double"></i> Mark Attendance (${authCount} students)`;
                         savedMessage.style.display = 'none';
                     }
                 } else {
@@ -187,14 +275,15 @@
         .then(data => {
             markAttendanceBtn.disabled = false;
             if (data.status === 'success') {
-                markAttendanceBtn.innerHTML = '<i class="fas fa-check"></i> Attendance Saved!';
+                markAttendanceBtn.innerHTML = `<i class="fas fa-check"></i> Saved — ${data.saved_count} Students`;
                 markAttendanceBtn.classList.remove('btn-primary');
                 markAttendanceBtn.classList.add('btn-ghost');
                 markAttendanceBtn.disabled = true;
                 savedMessage.style.display = 'block';
-                savedMessage.innerHTML = `<div class="status-message"><i class="fas fa-check-circle text-success"></i> ${data.message}</div>`;
+                savedMessage.innerHTML = `<div class="status-message"><i class="fas fa-check-circle text-success"></i> ${data.message} (${scanCount} scan${scanCount > 1 ? 's' : ''} used)</div>`;
+                document.getElementById('scanGuide').style.display = 'none';
             } else {
-                markAttendanceBtn.innerHTML = '<i class="fas fa-check-double"></i> Mark Attendance';
+                markAttendanceBtn.innerHTML = `<i class="fas fa-check-double"></i> Mark Attendance (${authCount} students)`;
                 savedMessage.style.display = 'block';
                 savedMessage.innerHTML = `<div class="status-message"><i class="fas fa-times-circle text-danger"></i> ${data.message}</div>`;
             }
