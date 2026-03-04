@@ -119,11 +119,7 @@ Open **http://localhost:5000** in your browser.
 
 ---
 
-## Default Credentials
 
-| Role | Username | Password |
-|------|----------|----------|
-| Admin | `admin` | `admin_security_pass` |
 
 > Create teacher and student accounts via the registration page, then approve them from the admin dashboard.
 
