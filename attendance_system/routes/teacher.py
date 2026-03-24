@@ -149,7 +149,12 @@ def bulk_attendance():
             return redirect(url_for('teacher.bulk_attendance'))
 
         selected_date = datetime.strptime(date_str, '%Y-%m-%d').date()
-        course = Timetable.objects(teacher=teacher_profile, period_no=int(period_no)).first()
+        selected_day = selected_date.strftime('%A')
+        course = Timetable.objects(
+            teacher=teacher_profile,
+            day_of_week=selected_day,
+            period_no=int(period_no)
+        ).first()
         count = 0
         for sid in student_ids:
             student = Student.objects(id=sid).first()
@@ -189,11 +194,23 @@ def attendance_request():
     if form.validate_on_submit():
         student = Student.objects(id=form.student_enrollment.data).first()
         if student:
+            selected_day = form.date.data.strftime('%A')
+            selected_period = int(form.period_no.data)
+            course = Timetable.objects(
+                teacher=teacher_profile,
+                day_of_week=selected_day,
+                period_no=selected_period
+            ).first()
+
+            if not course:
+                flash('Selected period is not in your timetable for that date.', 'danger')
+                return render_template('teacher/request.html', form=form)
+
             AttendanceRequest(
                 teacher=teacher_profile,
                 student=student,
                 date=form.date.data,
-                period_no=int(form.period_no.data),
+                period_no=selected_period,
                 reason=form.reason.data,
                 status='Pending'
             ).save()

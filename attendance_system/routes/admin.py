@@ -1,7 +1,9 @@
-from flask import Blueprint, render_template, redirect, url_for, flash, request, abort
+from flask import Blueprint, render_template, redirect, url_for, flash, request, abort, Response
 from flask_login import current_user
 from services.admin_service import AdminService
 from models import Student, Timetable, Teacher
+import csv
+import io
 
 admin_bp = Blueprint('admin', __name__)
 
@@ -35,6 +37,32 @@ def reject_user(user_id):
 def students_list():
     students = Student.objects.all().order_by('roll_no')
     return render_template('admin/students_list.html', students=students)
+
+@admin_bp.route('/students/export')
+def export_students():
+    students = Student.objects.all().order_by('roll_no')
+
+    output = io.StringIO()
+    writer = csv.writer(output)
+    writer.writerow(['roll_no', 'name', 'branch', 'face_enrolled', 'username'])
+
+    for student in students:
+        writer.writerow([
+            student.roll_no,
+            student.name,
+            student.branch or 'General',
+            'Yes' if student.is_face_enrolled else 'No',
+            student.user.username if student.user else ''
+        ])
+
+    csv_data = output.getvalue()
+    output.close()
+
+    return Response(
+        csv_data,
+        mimetype='text/csv',
+        headers={'Content-Disposition': 'attachment; filename=students_export.csv'}
+    )
 
 @admin_bp.route('/student/<student_id>')
 def student_details(student_id):

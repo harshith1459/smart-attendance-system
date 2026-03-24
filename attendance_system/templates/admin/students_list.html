@@ -7,8 +7,8 @@
         <p class="page-subtitle">Manage all registered students</p>
     </div>
     <div class="page-actions">
-        <button class="btn btn-ghost"><i class="fas fa-download"></i> Export</button>
-        <button class="btn btn-primary"><i class="fas fa-plus"></i> Add Student</button>
+        <a href="{{ url_for('admin.export_students') }}" class="btn btn-ghost"><i class="fas fa-download"></i> Export CSV</a>
+        <a href="{{ url_for('auth.register') }}" class="btn btn-primary"><i class="fas fa-plus"></i> Add Student</a>
     </div>
 </div>
 
